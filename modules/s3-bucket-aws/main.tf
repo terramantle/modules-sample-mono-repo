@@ -35,3 +35,5 @@ resource "aws_s3_bucket_cors_configuration" "main" {
     }
   }
 }
+
+# trigger: oidc fix smoke test
