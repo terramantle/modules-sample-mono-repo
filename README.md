@@ -18,15 +18,16 @@ scanning and policy gating block a bad module.
 
 ```
 .
-├── .github/workflows/
-│   ├── publish-modules.yml   # commit-driven release (semantic-release)
-│   ├── reconcile.yml         # manual self-heal (re-publish stuck tags)
-│   └── checks.yml            # advisory pre-commit checks on PRs
+├── .github/
+│   ├── workflows/
+│   │   ├── publish-modules.yml   # commit-driven release (semantic-release)
+│   │   ├── reconcile.yml         # manual self-heal (re-publish stuck tags)
+│   │   └── checks.yml            # advisory pre-commit checks on PRs
+│   └── scripts/
+│       ├── release.mjs           # runs semantic-release per module
+│       └── publish-to-terramantle.sh   # idempotent publish (release + reconcile)
 ├── .pre-commit-config.yaml   # terraform fmt + terraform-docs on commit
 ├── package.json              # release tooling (semantic-release + monorepo)
-├── scripts/
-│   ├── release.mjs           # runs semantic-release per module
-│   └── publish-to-terramantle.sh   # idempotent publish (used by release + reconcile)
 └── modules/
     └── <name>-<provider>/    # one directory per module
         ├── manifest.yaml     # module identity (name, provider, description)
@@ -97,7 +98,7 @@ Touch several modules in one push and each is released independently.
 
 ### How it works under the hood
 
-`scripts/release.mjs` runs `semantic-release` (with the
+`.github/scripts/release.mjs` runs `semantic-release` (with the
 `semantic-release-monorepo` wrapper) once per module, scoped to that module's
 directory. semantic-release computes the version, **pushes the git tag**, then
 runs `.github/scripts/publish-to-terramantle.sh` to PUT the module to the registry.

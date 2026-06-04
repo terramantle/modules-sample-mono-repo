@@ -4,8 +4,8 @@
   "private": true,
   "description": "Reference Terraform module monorepo — commit-driven publishing to Terramantle via semantic-release",
   "scripts": {
-    "release": "node scripts/release.mjs",
-    "release:dry": "node scripts/release.mjs --dry-run"
+    "release": "node .github/scripts/release.mjs",
+    "release:dry": "node .github/scripts/release.mjs --dry-run"
   },
   "devDependencies": {
     "@semantic-release/commit-analyzer": "^13.0.0",

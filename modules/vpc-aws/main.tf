@@ -65,3 +65,5 @@ module "database" {
   vpc_id = module.network.vpc_id
   subnet_ids = module.network.private_subnet_ids
 }
+
+# trigger: pipeline smoke test

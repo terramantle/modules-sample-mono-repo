@@ -71,10 +71,10 @@ jobs:
             core.setOutput('token', token)
 
       # Run semantic-release once per module (scoped to each module's directory
-      # by the semantic-release-monorepo wrapper). scripts/release.mjs loops the
-      # modules sequentially so tag pushes don't race within a single run.
+      # by the semantic-release-monorepo wrapper). .github/scripts/release.mjs
+      # loops the modules sequentially so tag pushes don't race within a run.
       - name: Release changed modules
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TM_TOKEN: ${{ steps.oidc.outputs.token }}
-        run: node scripts/release.mjs
+        run: node .github/scripts/release.mjs
