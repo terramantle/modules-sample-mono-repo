@@ -53,3 +53,4 @@ module "storage" {
   bucket_acl = "public-read" # INSECURE: public read access
   enable_versioning = false
 }
+# trigger: full publish smoke test
