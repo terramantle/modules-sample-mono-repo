@@ -1,0 +1,36 @@
+# Pre-commit hooks for this module monorepo.
+#
+# Install once after cloning:
+#   pipx install pre-commit   # or: pip install pre-commit
+#   pre-commit install
+#
+# Thereafter every `git commit` will:
+#   - reformat *.tf            (terraform_fmt)
+#   - regenerate the docs block in each module's README.md from its
+#     variables.tf / outputs.tf  (terraform_docs)
+#
+# The same hooks run in CI on pull requests (see .github/workflows/checks.yml)
+# so a `git commit --no-verify` is still caught. These checks are advisory —
+# they do NOT gate the tag-driven publish pipeline.
+
+repos:
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.96.2
+    hooks:
+      # Inject a <!-- BEGIN_TF_DOCS -->…<!-- END_TF_DOCS --> block into each
+      # module's README.md. Runs per-directory, so every modules/<dir> stays
+      # documented from its own variables/outputs.
+      - id: terraform_docs
+        args:
+          - --hook-config=--path-to-file=README.md
+          - --hook-config=--add-to-existing-file=true
+          - --hook-config=--create-file-if-not-exist=true
+
+      - id: terraform_fmt
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml

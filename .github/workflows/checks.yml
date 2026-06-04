@@ -1,0 +1,31 @@
+name: checks
+
+# Advisory CI: re-runs the pre-commit hooks (terraform fmt + terraform-docs)
+# on every pull request, so a contributor who committed with --no-verify is
+# still caught. This does NOT gate the tag-driven publish pipeline.
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - uses: opentofu/setup-opentofu@v1
+
+      - name: Install terraform-docs
+        run: |
+          curl -sSLo /tmp/tfdocs.tar.gz \
+            https://github.com/terraform-docs/terraform-docs/releases/download/v0.18.0/terraform-docs-v0.18.0-linux-amd64.tar.gz
+          tar -xzf /tmp/tfdocs.tar.gz -C /tmp terraform-docs
+          sudo install /tmp/terraform-docs /usr/local/bin/terraform-docs
+
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1

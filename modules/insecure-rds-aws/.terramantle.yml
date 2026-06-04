@@ -1,0 +1,10 @@
+# Module identity. The VERSION is NOT here — it comes from the git tag
+# (e.g. insecure-rds-aws@0.1.0). This file only supplies what the registry takes
+# verbatim from the publish URL: name, provider, and a description.
+#
+# This module is INTENTIONALLY insecure — it exists to demonstrate Terramantle's
+# scan + policy gating. It will publish but be flagged NOT consumable until the
+# org's enforcing policies pass.
+name: insecure-rds
+provider: aws
+description: Intentionally insecure RDS — demonstrates scan + policy gating

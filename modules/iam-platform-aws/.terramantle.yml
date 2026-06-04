@@ -1,0 +1,6 @@
+# Module identity. The VERSION is NOT here — it comes from the git tag
+# (e.g. iam-platform-aws@1.0.3). This file only supplies what the registry takes
+# verbatim from the publish URL: name, provider, and a description.
+name: iam-platform
+provider: aws
+description: IAM platform with EKS, RDS, VPC, S3 — showcases dependency graph

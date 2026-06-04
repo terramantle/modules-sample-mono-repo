@@ -1,0 +1,6 @@
+# Module identity. The VERSION is NOT here — it comes from the git tag
+# (e.g. eks-cluster-aws@1.0.1). This file only supplies what the registry takes
+# verbatim from the publish URL: name, provider, and a description.
+name: eks-cluster
+provider: aws
+description: EKS cluster with managed node groups
