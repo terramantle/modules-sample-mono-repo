@@ -77,3 +77,5 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# verify: post-merge clean release
