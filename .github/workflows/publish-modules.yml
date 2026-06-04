@@ -1,27 +1,32 @@
 name: publish-modules
 
-# Tag-driven module publishing.
+# Commit-driven module publishing (Lerna / semantic-release model).
 #
-# The git tag IS the version. Tag format: <module-dir>@<semver>, e.g.
-#   git tag eks-cluster-aws@1.2.3 && git push origin eks-cluster-aws@1.2.3
+# You do NOT tag by hand. Merge Conventional-Commit PRs to main and CI will,
+# per module, compute the next semantic version from the commits that touched
+# that module's directory, publish it to Terramantle, and push the git tag
+# <module-dir>@<version> (e.g. eks-cluster-aws@1.2.3).
 #
-# Push one tag to release one module, or several tags in one push to release
-# several modules at once. The `detect` job turns the pushed tags into a build
-# matrix; the `publish` job runs one parallel leg per released module.
+#   feat:            → minor      fix: / perf:     → patch
+#   <type>! / BREAKING CHANGE → major              docs/ci/chore/… → no release
 #
-# Versioning vs change detection are SEPARATE concerns:
-#   - version  -> comes only from the tag (no version is stored in the repo)
-#   - matrix   -> scopes work to exactly the modules whose tags were pushed,
-#                 and skips a module whose tree hasn't changed since its last tag
+# semantic-release pushes the tag in core BEFORE the publish step and does not
+# roll it back on failure. The publish step (.github/scripts/publish-to-terramantle.sh)
+# is therefore idempotent and self-healing; a stuck tag can be reconciled with
+# the manual `reconcile` workflow.
 #
-# Auth is GitHub OIDC — no stored secrets. The org must trust the subject
-#   repo:terramantle/modules-sample-mono-repo
-# in Terramantle → Organisation settings → VCS Trust.
+# Two GitHub tokens are used:
+#   - OIDC token (id-token: write) → bearer for the PUT to Terramantle. The org
+#     must trust  repo:terramantle/modules-sample-mono-repo  under VCS Trust.
+#   - GITHUB_TOKEN (contents: write) → semantic-release pushes the git tag.
 
 on:
   push:
-    tags:
-      - '*@*'
+    branches: [main]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false   # never cancel a release mid-flight
 
 env:
   # The only value to change when you fork this repo: your Terramantle org slug.
@@ -29,16 +34,23 @@ env:
   TM_REGISTRY: https://registry.terramantle.dev
 
 jobs:
-  # ── detect ────────────────────────────────────────────────────────────────
-  # Turn the <dir>@<semver> tags pushed in this event into a JSON build matrix.
-  detect:
+  release:
     runs-on: ubuntu-latest
-    outputs:
-      modules: ${{ steps.collect.outputs.modules }}
+    permissions:
+      contents: write   # semantic-release pushes tags
+      id-token: write   # mint the OIDC token for publishing
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # need full tag history for the change-gate
+          fetch-depth: 0          # semantic-release needs full history + tags
+          persist-credentials: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install release tooling
+        run: npm ci
 
       - name: Install yq
         run: |
@@ -46,81 +58,9 @@ jobs:
             https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
-      - name: Collect released modules
-        id: collect
-        run: |
-          set -euo pipefail
-          semver='^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'
-          modules='[]'
-
-          # Tags that point at the commit being pushed, in <dir>@<semver> form.
-          tags=$(git tag --points-at "$GITHUB_SHA" | grep '@' || true)
-          if [ -z "$tags" ]; then
-            echo "::notice::No <dir>@<semver> tags on this commit — nothing to publish."
-            echo "modules=[]" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          while IFS= read -r tag; do
-            [ -n "$tag" ] || continue
-            dir="${tag%@*}"      # everything before the LAST @
-            version="${tag##*@}" # everything after the LAST @
-
-            if ! printf '%s' "$version" | grep -Eq "$semver"; then
-              echo "::error::Tag '$tag' has a non-semver version '$version'"; exit 1
-            fi
-            if [ ! -d "modules/$dir" ]; then
-              echo "::error::Tag '$tag' references modules/$dir which does not exist"; exit 1
-            fi
-
-            meta="modules/$dir/.terramantle.yml"
-            if [ ! -f "$meta" ]; then
-              echo "::error::Missing $meta (declares name/provider/description)"; exit 1
-            fi
-            name=$(yq -r '.name' "$meta")
-            provider=$(yq -r '.provider' "$meta")
-            description=$(yq -r '.description // ""' "$meta")
-            if [ -z "$name" ] || [ "$name" = "null" ] || [ -z "$provider" ] || [ "$provider" = "null" ]; then
-              echo "::error::$meta must define both 'name' and 'provider'"; exit 1
-            fi
-
-            # Change-gate: skip if this module's tree hasn't moved since its
-            # previous tag. Avoids no-op republishes when batching releases.
-            prev=$(git tag --list "$dir@*" --sort=-version:refname | grep -vx "$tag" | head -n1 || true)
-            if [ -n "$prev" ] && git diff --quiet "$prev" "$tag" -- "modules/$dir"; then
-              echo "::warning::$dir unchanged since $prev — skipping $tag"
-              continue
-            fi
-
-            modules=$(printf '%s' "$modules" | jq -c \
-              --arg dir "$dir" --arg name "$name" --arg provider "$provider" \
-              --arg version "$version" --arg description "$description" \
-              '. + [{dir:$dir, name:$name, provider:$provider, version:$version, description:$description}]')
-          done <<< "$tags"
-
-          echo "Matrix: $modules"
-          echo "modules=$modules" >> "$GITHUB_OUTPUT"
-
-  # ── publish ───────────────────────────────────────────────────────────────
-  # One parallel leg per released module. Each leg packages only its own dir
-  # and PUTs it at the tag's version, authenticating with a GitHub OIDC token.
-  publish:
-    needs: detect
-    if: needs.detect.outputs.modules != '[]'
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write   # required to request the OIDC token
-      contents: read
-    strategy:
-      fail-fast: false   # one bad module must not cancel the others
-      matrix:
-        include: ${{ fromJson(needs.detect.outputs.modules) }}
-    steps:
-      - uses: actions/checkout@v4
-
-      # Mint the GitHub Actions OIDC token via the official helper — no manual
-      # $ACTIONS_ID_TOKEN_REQUEST_* curl. The registry verifies this JWT against
-      # GitHub's JWKS and matches its `sub` to a VCS Trust subject in your org.
+      # GitHub OIDC token → bearer for publishing to Terramantle. No stored
+      # secrets. The registry verifies this JWT against GitHub's JWKS and matches
+      # its `sub` to a VCS Trust subject in your org.
       - name: Get GitHub Actions OIDC token
         id: oidc
         uses: actions/github-script@v7
@@ -130,41 +70,11 @@ jobs:
             core.setSecret(token)
             core.setOutput('token', token)
 
-      - name: Package and publish ${{ matrix.name }}/${{ matrix.provider }}@${{ matrix.version }}
+      # Run semantic-release once per module (scoped to each module's directory
+      # by the semantic-release-monorepo wrapper). scripts/release.mjs loops the
+      # modules sequentially so tag pushes don't race within a single run.
+      - name: Release changed modules
         env:
-          TOKEN: ${{ steps.oidc.outputs.token }}
-        run: |
-          set -euo pipefail
-          tar -czf module.tar.gz -C "modules/${{ matrix.dir }}" .
-
-          desc=$(printf '%s' "${{ matrix.description }}" | jq -sRr @uri)
-          url="$TM_REGISTRY/v1/modules/$TM_ORG/${{ matrix.name }}/${{ matrix.provider }}/${{ matrix.version }}?description=$desc&wait=true&timeout=15000"
-
-          body=$(mktemp)
-          code=$(curl -s -o "$body" -w '%{http_code}' -X PUT "$url" \
-            -H "Authorization: Bearer $TOKEN" \
-            -H "Content-Type: application/octet-stream" \
-            --data-binary @module.tar.gz)
-
-          echo "HTTP $code"; cat "$body"; echo
-
-          case "$code" in
-            2*)
-              status=$(jq -r '.status // "published"' "$body" 2>/dev/null || echo unknown)
-              consumable=$(jq -r '.consumable // "unknown"' "$body" 2>/dev/null || echo unknown)
-              echo "::notice::Published ${{ matrix.name }}/${{ matrix.provider }}@${{ matrix.version }} (status=$status, consumable=$consumable)"
-              # Surface a failed scan / non-consumable result as a job failure.
-              if [ "$status" = "failed" ] || [ "$consumable" = "false" ]; then
-                echo "::error::Module published but is NOT consumable — scans or policy failed. See registry."
-                exit 1
-              fi
-              ;;
-            409|422)
-              # Versions are immutable — a re-pushed tag is an expected, clear failure.
-              echo "::error::Version ${{ matrix.version }} already published for ${{ matrix.name }}/${{ matrix.provider }} (versions are immutable). Bump the tag."
-              exit 1
-              ;;
-            *)
-              echo "::error::Publish failed with HTTP $code"; exit 1
-              ;;
-          esac
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TM_TOKEN: ${{ steps.oidc.outputs.token }}
+        run: node scripts/release.mjs

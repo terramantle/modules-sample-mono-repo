@@ -19,12 +19,18 @@ scanning and policy gating block a bad module.
 ```
 .
 ├── .github/workflows/
-│   ├── publish-modules.yml   # tag-driven publish (detect → matrix → publish)
+│   ├── publish-modules.yml   # commit-driven release (semantic-release)
+│   ├── reconcile.yml         # manual self-heal (re-publish stuck tags)
 │   └── checks.yml            # advisory pre-commit checks on PRs
 ├── .pre-commit-config.yaml   # terraform fmt + terraform-docs on commit
+├── package.json              # release tooling (semantic-release + monorepo)
+├── scripts/
+│   ├── release.mjs           # runs semantic-release per module
+│   └── publish-to-terramantle.sh   # idempotent publish (used by release + reconcile)
 └── modules/
     └── <name>-<provider>/    # one directory per module
-        ├── .terramantle.yml  # module identity (name, provider, description)
+        ├── manifest.yaml     # module identity (name, provider, description)
+        ├── package.json      # lets semantic-release scope commits to this module
         ├── README.md         # docs — TF_DOCS block auto-generated
         ├── main.tf
         ├── variables.tf
@@ -33,70 +39,75 @@ scanning and policy gating block a bad module.
 
 Each module lives in `modules/<name>-<provider>/`. The directory name is just a
 human label — the registry coordinates (`name`, `provider`) come from that
-module's `.terramantle.yml`, never from string-splitting the directory:
+module's `manifest.yaml`, never from string-splitting the directory:
 
 ```yaml
-# modules/eks-cluster-aws/.terramantle.yml
+# modules/eks-cluster-aws/manifest.yaml
 name: eks-cluster
 provider: aws
 description: EKS cluster with managed node groups
 ```
 
-Notice there is **no `version` field**. That's deliberate — see below.
+Notice there is **no `version` field**. That's deliberate — the version is
+computed from your commit history (see below). The per-module `package.json` is
+boilerplate that exists only so `semantic-release` can identify each module and
+scope commits to its directory — Terraform ignores it.
 
 ---
 
 ## Versioning & releases
 
-Two things are kept strictly separate here:
+**You never pick a version or push a tag by hand.** Releases are driven by your
+commit messages, Lerna / semantic-release style. Merge
+[Conventional-Commit](https://www.conventionalcommits.org) PRs to `main`, and CI
+does the rest, **per module**:
 
-| Concern              | Source of truth                                          |
-| -------------------- | -------------------------------------------------------- |
-| **Version**          | the **git tag** — nothing in the repo carries a version  |
-| **What gets built**  | the **CI matrix** — scoped to the tags you pushed        |
+1. For each `modules/<dir>`, find the commits that touched that directory since
+   its last release tag.
+2. Compute the next semantic version from those commits' types.
+3. Publish the module to Terramantle at that version.
+4. Tag the repo `<module-dir>@<version>` (e.g. `eks-cluster-aws@1.2.3`).
 
-### The tag is the version
+A commit that touches only `vpc-aws` bumps **only** `vpc` — each module versions
+independently.
 
-A release is triggered by **pushing a tag**, not by pushing code. The tag format
-is `<module-dir>@<semver>`:
+### Bump rules
 
-```bash
-# release one module
-git tag eks-cluster-aws@1.2.3
-git push origin eks-cluster-aws@1.2.3
-# → publishes modules/eks-cluster-aws as eks-cluster/aws@1.2.3
-```
+| Commit                                            | Bump        |
+| ------------------------------------------------- | ----------- |
+| `feat: …`                                         | **minor**   |
+| `fix: …` / `perf: …`                              | **patch**   |
+| `feat!: …` or any type with `BREAKING CHANGE:`    | **major**   |
+| `docs:` / `ci:` / `chore:` / `refactor:` / `test:`| no release  |
 
-The workflow parses the tag — `eks-cluster-aws@1.2.3` → directory
-`eks-cluster-aws`, version `1.2.3` — packages that one module, and PUTs it to
-the registry at that version. Registry versions are **immutable**: re-pushing an
-existing version fails with a clear "already published" message. Bump the tag to
-release again.
+The first release of a module is always `1.0.0`.
 
-Because the version only ever comes from the tag, there's no second place that
-can disagree with it, and no "I forgot to bump the version file" failure mode.
+### Releasing
 
-### The matrix is scope, not version
-
-You can release several modules in one push. The `publish-modules.yml` workflow
-runs a `detect` job that collects every `<dir>@<semver>` tag pointing at the
-pushed commit and turns them into a build matrix; a `publish` job then runs **one
-parallel leg per module**, each at its own tag's version:
+Just merge to `main`:
 
 ```bash
-# release two modules at once — two parallel publish legs
-git tag vpc-aws@2.0.0 eks-cluster-aws@1.2.3
-git push origin vpc-aws@2.0.0 eks-cluster-aws@1.2.3
+git commit -m "feat(eks): add cluster autoscaler support"   # → eks-cluster/aws minor bump
+git commit -m "fix(vpc): correct subnet cidr"               # → vpc/aws patch bump
+git push origin main
 ```
 
-The matrix iterates the **pushed tags**, not a diff of `main`. So only the
-modules you actually tagged get parsed, packaged, and published — there is no
-"publish everything that changed on main" path that could mass-overwrite. As an
-extra guard, `detect` skips a tagged module whose tree hasn't actually changed
-since its previous tag (a no-op release is warned and dropped).
+CI computes each changed module's next version, publishes it, and pushes its tag.
+Touch several modules in one push and each is released independently.
 
-This is the same model as Lerna independent mode / semantic-release-monorepo:
-releases are **intentional**, declared by a tag, not inferred from a diff.
+### How it works under the hood
+
+`scripts/release.mjs` runs `semantic-release` (with the
+`semantic-release-monorepo` wrapper) once per module, scoped to that module's
+directory. semantic-release computes the version, **pushes the git tag**, then
+runs `.github/scripts/publish-to-terramantle.sh` to PUT the module to the registry.
+
+semantic-release pushes the tag *before* publishing and doesn't roll it back on
+failure, so the publish script is **idempotent**: if a version already exists in
+the registry it's a no-op, and transient failures retry. If a publish ever fails
+after its tag was pushed, run the **reconcile** workflow (Actions → reconcile) —
+it re-publishes any tagged version missing from the registry. Registry versions
+are immutable; the tag is the permanent release record.
 
 ---
 
@@ -136,15 +147,11 @@ is still caught. These checks are **advisory** — they don't gate publishing.
 
 Every published version is scanned (Trivy, KICS, TFLint) and evaluated against
 your org's policies. `modules/insecure-rds-aws` is intentionally vulnerable —
-hardcoded credentials, public accessibility, no encryption, no backups. Publish
-it and watch it land in the registry but be flagged **not consumable** until an
-owner overrides or the policy passes:
-
-```bash
-git tag insecure-rds-aws@0.1.0 && git push origin insecure-rds-aws@0.1.0
-```
-
-A clean module (e.g. `vpc-aws`) publishes consumable.
+hardcoded credentials, public accessibility, no encryption, no backups. Merge a
+change to it (e.g. `fix(insecure-rds): …`) and watch it land in the registry but
+be flagged **not consumable** — the release step fails by design until an owner
+overrides or the policy passes. A clean module (e.g. `vpc-aws`) publishes
+consumable.
 
 ---
 

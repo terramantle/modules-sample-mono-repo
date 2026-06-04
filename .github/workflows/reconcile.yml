@@ -1,0 +1,74 @@
+name: reconcile
+
+# Manual self-heal for the tag-before-publish gap.
+#
+# semantic-release pushes a git tag before the publish step and does not roll it
+# back if publishing fails. That can leave a <module-dir>@<version> tag whose
+# version never made it into the registry. This workflow finds those and
+# re-publishes them — idempotently, via the same script the release flow uses.
+#
+# Run it from the Actions tab (workflow_dispatch) after a failed release once
+# the underlying issue is fixed.
+
+on:
+  workflow_dispatch:
+
+env:
+  TM_ORG: acme-demo
+  TM_REGISTRY: https://registry.terramantle.dev
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need all tags
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Get GitHub Actions OIDC token
+        id: oidc
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const token = await core.getIDToken(process.env.TM_REGISTRY)
+            core.setSecret(token)
+            core.setOutput('token', token)
+
+      - name: Re-publish any tagged version missing from the registry
+        env:
+          TM_TOKEN: ${{ steps.oidc.outputs.token }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for dir in $(ls -d modules/*/ | xargs -n1 basename); do
+            meta="modules/$dir/manifest.yaml"
+            [ -f "$meta" ] || continue
+            name=$(yq -r '.name' "$meta")
+            provider=$(yq -r '.provider' "$meta")
+
+            for tag in $(git tag --list "$dir@*"); do
+              version="${tag##*@}"
+              url="$TM_REGISTRY/v1/modules/$TM_ORG/$name/$provider/$version"
+              code=$(curl -fsS -o /dev/null -w '%{http_code}' \
+                -H "Authorization: Bearer $TM_TOKEN" "$url" || echo 000)
+              if [ "$code" = "200" ]; then
+                echo "✓ $name/$provider@$version present"
+              else
+                echo "::warning::$name/$provider@$version missing (HTTP $code) — re-publishing from $tag"
+                git checkout -q "$tag" -- "modules/$dir"
+                "$GITHUB_WORKSPACE/.github/scripts/publish-to-terramantle.sh" "$dir" "$version"
+                git checkout -q HEAD -- "modules/$dir"
+                missing=$((missing + 1))
+              fi
+            done
+          done
+          echo "Reconciled $missing missing version(s)."

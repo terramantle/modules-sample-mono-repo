@@ -1,0 +1,7 @@
+# Module identity for the Terramantle registry.
+# The VERSION is NOT here — it is computed from your Conventional-Commit
+# history and recorded as the git tag <module-dir>@<version>. This file only
+# supplies what the registry takes verbatim from the publish URL.
+name: s3-bucket
+provider: aws
+description: S3 bucket with configurable ACL and CORS
