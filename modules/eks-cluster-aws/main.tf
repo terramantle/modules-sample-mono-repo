@@ -13,7 +13,6 @@ resource "aws_eks_cluster" "main" {
   }
 
   enabled_cluster_log_types = var.enabled_log_types
-
   tags = var.tags
 }
 
