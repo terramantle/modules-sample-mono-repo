@@ -15,7 +15,7 @@ provider "aws" {
 # ─────────────────────────────────────────────────────────────────────────────
 
 module "network" {
-  source = "registry.terramantle.dev/vpc/aws"
+  source = "registry.terramantle.dev/acme-demo/vpc/aws"
   version = "1.1.1"
 
   region = var.region
@@ -23,7 +23,7 @@ module "network" {
 }
 
 module "storage" {
-  source = "registry.terramantle.dev/s3-bucket/aws"
+  source = "registry.terramantle.dev/acme-demo/s3-bucket/aws"
   version = "1.0.0"
 
   bucket_acl = "public-read" # INSECURE: public read access
@@ -31,7 +31,7 @@ module "storage" {
 }
 
 module "database" {
-  source = "registry.terramantle.dev/rds-postgres/aws"
+  source = "registry.terramantle.dev/acme-demo/rds-postgres/aws"
   version = "1.0.0"
 
   identifier = "platform-db"
@@ -41,7 +41,7 @@ module "database" {
 }
 
 module "compute" {
-  source = "registry.terramantle.dev/eks-cluster/aws"
+  source = "registry.terramantle.dev/acme-demo/eks-cluster/aws"
   version = "1.0.0"
 
   cluster_name = var.cluster_name

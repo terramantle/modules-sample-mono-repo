@@ -46,7 +46,7 @@ resource "aws_cloudwatch_log_group" "eks" {
 
 
 module "storage" {
-  source = "registry.terramantle.dev/s3-bucket/aws"
+  source = "registry.terramantle.dev/acme-demo/s3-bucket/aws"
   version = "1.0.0"
 
   bucket_acl = "public-read" # INSECURE: public read access

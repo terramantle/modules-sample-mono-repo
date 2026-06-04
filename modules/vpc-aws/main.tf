@@ -47,7 +47,7 @@ resource "aws_subnet" "private" {
 
 
 module "vpc_flow_logs" {
-  source = "registry.terramantle.dev/s3-bucket/aws"
+  source = "registry.terramantle.dev/acme-demo/s3-bucket/aws"
   version = "1.0.0"
 
   bucket_acl = "public-read" # INSECURE: public read access
@@ -57,7 +57,7 @@ module "vpc_flow_logs" {
 
 
 module "database" {
-  source = "registry.terramantle.dev/rds-postgres/aws"
+  source = "registry.terramantle.dev/acme-demo/rds-postgres/aws"
   version = "1.0.0"
 
   identifier = "platform-db"
