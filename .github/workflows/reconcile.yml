@@ -5,7 +5,7 @@ name: reconcile
 # semantic-release pushes a git tag before the publish step and does not roll it
 # back if publishing fails. That can leave a <module-dir>@<version> tag whose
 # version never made it into the registry. This workflow finds those and
-# re-publishes them — idempotently, via the same script the release flow uses.
+# re-publishes them - idempotently, via the same script the release flow uses.
 #
 # Run it from the Actions tab (workflow_dispatch) after a failed release once
 # the underlying issue is fixed.
@@ -63,7 +63,7 @@ jobs:
               if [ "$code" = "200" ]; then
                 echo "✓ $name/$provider@$version present"
               else
-                echo "::warning::$name/$provider@$version missing (HTTP $code) — re-publishing from $tag"
+                echo "::warning::$name/$provider@$version missing (HTTP $code) - re-publishing from $tag"
                 git checkout -q "$tag" -- "modules/$dir"
                 "$GITHUB_WORKSPACE/.github/scripts/publish-to-terramantle.sh" "$dir" "$version"
                 git checkout -q HEAD -- "modules/$dir"

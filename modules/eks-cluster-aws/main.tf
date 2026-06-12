@@ -1,4 +1,4 @@
-# EKS cluster module — cost-heavy, mixed security findings
+# EKS cluster module - cost-heavy, mixed security findings
 
 resource "aws_eks_cluster" "main" {
   name     = var.cluster_name

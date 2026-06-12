@@ -61,7 +61,7 @@ module "iam" {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# IAM Roles — Intentionally Insecure
+# IAM Roles - Intentionally Insecure
 # ─────────────────────────────────────────────────────────────────────────────
 
 # CRITICAL: Trust principal "*" allows ANY AWS account to assume this role

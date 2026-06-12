@@ -1,4 +1,4 @@
-# A simple VPC module — clean, no findings expected
+# A simple VPC module - clean, no findings expected
 
 resource "aws_vpc" "main" {
   cidr_block           = var.cidr_block

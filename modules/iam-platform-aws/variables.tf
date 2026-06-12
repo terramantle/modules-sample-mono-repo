@@ -27,7 +27,7 @@ variable "cluster_name" {
 
 variable "db_password" {
   type = string
-  default = "RootPass1!"  # CRITICAL: Hardcoded password — never do this in production
+  default = "RootPass1!"  # CRITICAL: Hardcoded password - never do this in production
   sensitive = true
   description = "RDS database master password"
 }

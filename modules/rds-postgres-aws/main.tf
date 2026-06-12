@@ -1,4 +1,4 @@
-# RDS PostgreSQL module — security findings: no deletion protection,
+# RDS PostgreSQL module - security findings: no deletion protection,
 # storage not encrypted by default, publicly accessible option
 
 resource "aws_db_subnet_group" "main" {

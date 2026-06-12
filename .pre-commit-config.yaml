@@ -10,7 +10,7 @@
 #     variables.tf / outputs.tf  (terraform_docs)
 #
 # The same hooks run in CI on pull requests (see .github/workflows/checks.yml)
-# so a `git commit --no-verify` is still caught. These checks are advisory —
+# so a `git commit --no-verify` is still caught. These checks are advisory -
 # they do NOT gate the tag-driven publish pipeline.
 
 repos:

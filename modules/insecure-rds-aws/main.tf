@@ -12,7 +12,7 @@ resource "aws_db_instance" "main" {
   # No encryption at rest
   storage_encrypted = false
 
-  # Publicly accessible — exposes database to internet
+  # Publicly accessible - exposes database to internet
   publicly_accessible = true
 
   # No deletion protection
@@ -41,7 +41,7 @@ resource "aws_security_group" "rds" {
   description = "RDS security group"
   vpc_id      = var.vpc_id
 
-  # Allow MySQL from anywhere — overly permissive
+  # Allow MySQL from anywhere - overly permissive
   ingress {
     from_port   = 3306
     to_port     = 3306
@@ -66,7 +66,7 @@ resource "aws_db_subnet_group" "main" {
   tags       = var.tags
 }
 
-# S3 bucket for DB exports — no encryption, public ACL
+# S3 bucket for DB exports - no encryption, public ACL
 resource "aws_s3_bucket" "exports" {
   bucket = "${var.identifier}-db-exports"
   tags   = var.tags
@@ -104,7 +104,7 @@ resource "aws_iam_role_policy" "rds_policy" {
     Version = "2012-10-17"
     Statement = [{
       Effect   = "Allow"
-      Action   = ["*"]          # wildcard — overly permissive
+      Action   = ["*"]          # wildcard - overly permissive
       Resource = ["*"]
     }]
   })

@@ -32,14 +32,14 @@ scanning and policy gating block a bad module.
     └── <name>-<provider>/    # one directory per module
         ├── manifest.yaml     # module identity (name, provider, description)
         ├── package.json      # lets semantic-release scope commits to this module
-        ├── README.md         # docs — TF_DOCS block auto-generated
+        ├── README.md         # docs - TF_DOCS block auto-generated
         ├── main.tf
         ├── variables.tf
         └── outputs.tf
 ```
 
 Each module lives in `modules/<name>-<provider>/`. The directory name is just a
-human label — the registry coordinates (`name`, `provider`) come from that
+human label - the registry coordinates (`name`, `provider`) come from that
 module's `manifest.yaml`, never from string-splitting the directory:
 
 ```yaml
@@ -49,10 +49,10 @@ provider: aws
 description: EKS cluster with managed node groups
 ```
 
-Notice there is **no `version` field**. That's deliberate — the version is
+Notice there is **no `version` field**. That's deliberate - the version is
 computed from your commit history (see below). The per-module `package.json` is
 boilerplate that exists only so `semantic-release` can identify each module and
-scope commits to its directory — Terraform ignores it.
+scope commits to its directory - Terraform ignores it.
 
 ---
 
@@ -69,7 +69,7 @@ does the rest, **per module**:
 3. Publish the module to Terramantle at that version.
 4. Tag the repo `<module-dir>@<version>` (e.g. `eks-cluster-aws@1.2.3`).
 
-A commit that touches only `vpc-aws` bumps **only** `vpc` — each module versions
+A commit that touches only `vpc-aws` bumps **only** `vpc` - each module versions
 independently.
 
 ### Bump rules
@@ -106,7 +106,7 @@ runs `.github/scripts/publish-to-terramantle.sh` to PUT the module to the regist
 semantic-release pushes the tag *before* publishing and doesn't roll it back on
 failure, so the publish script is **idempotent**: if a version already exists in
 the registry it's a no-op, and transient failures retry. If a publish ever fails
-after its tag was pushed, run the **reconcile** workflow (Actions → reconcile) —
+after its tag was pushed, run the **reconcile** workflow (Actions → reconcile) -
 it re-publishes any tagged version missing from the registry. Registry versions
 are immutable; the tag is the permanent release record.
 
@@ -114,7 +114,7 @@ are immutable; the tag is the permanent release record.
 
 ## Authentication (OIDC, no secrets)
 
-`publish-modules.yml` authenticates with GitHub Actions' native **OIDC** token —
+`publish-modules.yml` authenticates with GitHub Actions' native **OIDC** token -
 there are no stored client secrets. For it to work, your Terramantle org must
 trust this repo as a subject. In the app:
 
@@ -140,17 +140,17 @@ pre-commit install          # once per clone
 Now every `git commit` reformats `*.tf` and regenerates the
 `<!-- BEGIN_TF_DOCS -->…<!-- END_TF_DOCS -->` block in each module README. The
 same hooks run on pull requests via `checks.yml`, so a `git commit --no-verify`
-is still caught. These checks are **advisory** — they don't gate publishing.
+is still caught. These checks are **advisory** - they don't gate publishing.
 
 ---
 
 ## Scanning & policy gating
 
 Every published version is scanned (Trivy, KICS, TFLint) and evaluated against
-your org's policies. `modules/insecure-rds-aws` is intentionally vulnerable —
+your org's policies. `modules/insecure-rds-aws` is intentionally vulnerable -
 hardcoded credentials, public accessibility, no encryption, no backups. Merge a
 change to it (e.g. `fix(insecure-rds): …`) and watch it land in the registry but
-be flagged **not consumable** — the release step fails by design until an owner
+be flagged **not consumable** - the release step fails by design until an owner
 overrides or the policy passes. A clean module (e.g. `vpc-aws`) publishes
 consumable.
 

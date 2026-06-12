@@ -2,7 +2,7 @@
   "name": "modules-sample-mono-repo",
   "version": "0.0.0-managed",
   "private": true,
-  "description": "Reference Terraform module monorepo — commit-driven publishing to Terramantle via semantic-release",
+  "description": "Reference Terraform module monorepo - commit-driven publishing to Terramantle via semantic-release",
   "scripts": {
     "release": "node .github/scripts/release.mjs",
     "release:dry": "node .github/scripts/release.mjs --dry-run"

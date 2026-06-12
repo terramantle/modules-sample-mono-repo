@@ -4,7 +4,7 @@
 // semantic-release-monorepo identifies each package and scopes commit analysis
 // by reading the *process* working directory (not semantic-release's `cwd`
 // option), so we must chdir into each module dir before invoking it. Each
-// module therefore needs its own package.json (any name/version — Terraform
+// module therefore needs its own package.json (any name/version - Terraform
 // ignores it; it only exists so the wrapper can locate the package).
 //
 // The tag is pushed by semantic-release core; the actual publish to Terramantle

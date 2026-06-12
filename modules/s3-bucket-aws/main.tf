@@ -1,4 +1,4 @@
-# S3 bucket module — intentionally has security findings:
+# S3 bucket module - intentionally has security findings:
 # - no server-side encryption
 # - public ACL allowed
 # - no versioning

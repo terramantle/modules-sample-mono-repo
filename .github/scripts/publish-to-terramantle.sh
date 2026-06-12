@@ -20,7 +20,7 @@
 # Required env:
 #   TM_ORG       Terramantle org slug
 #   TM_REGISTRY  e.g. https://registry.terramantle.dev
-#   TM_TOKEN     GitHub OIDC JWT (bearer) — minted by the workflow
+#   TM_TOKEN     GitHub OIDC JWT (bearer) - minted by the workflow
 #   GITHUB_WORKSPACE  repo root (set by GitHub Actions)
 
 set -euo pipefail
@@ -52,11 +52,11 @@ auth=(-H "Authorization: Bearer $TM_TOKEN")
 
 echo "→ ${name}/${provider}@${version} (from modules/$dir)"
 
-# ── 1. Idempotency check — already published? ───────────────────────────────
+# ── 1. Idempotency check - already published? ───────────────────────────────
 # A prior run may have published this version but died before/while tagging.
 get_code=$(curl -fsS -o /dev/null -w '%{http_code}' "${auth[@]}" "$base" || echo 000)
 if [ "$get_code" = "200" ]; then
-  echo "::notice::${name}/${provider}@${version} already in registry — nothing to do."
+  echo "::notice::${name}/${provider}@${version} already in registry - nothing to do."
   exit 0
 fi
 
@@ -86,14 +86,14 @@ while :; do
       consumable=$(jq -r '.consumable // "unknown"' "$body" 2>/dev/null || echo unknown)
       echo "::notice::Published ${name}/${provider}@${version} (status=$status, consumable=$consumable)"
       if [ "$status" = "failed" ] || [ "$consumable" = "false" ]; then
-        echo "::error::Published but NOT consumable — scans or policy failed. See the registry."
+        echo "::error::Published but NOT consumable - scans or policy failed. See the registry."
         exit 1
       fi
       exit 0
       ;;
     409|422)
-      # Version already exists and is immutable — an expected, idempotent no-op.
-      echo "::notice::${name}/${provider}@${version} already published (immutable) — treating as success."
+      # Version already exists and is immutable - an expected, idempotent no-op.
+      echo "::notice::${name}/${provider}@${version} already published (immutable) - treating as success."
       exit 0
       ;;
     5*|000)
