@@ -7,7 +7,7 @@ resource "aws_db_instance" "main" {
 
   db_name  = var.db_name
   username = "admin"
-  password = "Password123!"  # hardcoded credential
+  password = "Password123!" # hardcoded credential
 
   # No encryption at rest
   storage_encrypted = false
@@ -104,7 +104,7 @@ resource "aws_iam_role_policy" "rds_policy" {
     Version = "2012-10-17"
     Statement = [{
       Effect   = "Allow"
-      Action   = ["*"]          # wildcard - overly permissive
+      Action   = ["*"] # wildcard - overly permissive
       Resource = ["*"]
     }]
   })

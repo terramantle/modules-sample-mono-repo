@@ -13,8 +13,10 @@ resource "aws_eks_cluster" "main" {
   }
 
   enabled_cluster_log_types = var.enabled_log_types
-  tags = var.tags
+  tags                      = var.tags
 }
+
+
 
 resource "aws_eks_node_group" "main" {
   for_each = var.node_groups
@@ -46,10 +48,10 @@ resource "aws_cloudwatch_log_group" "eks" {
 
 
 module "storage" {
-  source = "registry.terramantle.dev/acme-demo/s3-bucket/aws"
+  source  = "registry.terramantle.dev/acme-demo/s3-bucket/aws"
   version = "1.0.0"
 
-  bucket_acl = "public-read" # INSECURE: public read access
+  bucket_acl        = "public-read" # INSECURE: public read access
   enable_versioning = false
 }
 # trigger: full publish smoke test

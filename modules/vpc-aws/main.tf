@@ -47,22 +47,22 @@ resource "aws_subnet" "private" {
 
 
 module "vpc_flow_logs" {
-  source = "registry.terramantle.dev/acme-demo/s3-bucket/aws"
+  source  = "registry.terramantle.dev/acme-demo/s3-bucket/aws"
   version = "1.0.0"
 
-  bucket_acl = "public-read" # INSECURE: public read access
+  bucket_acl        = "public-read" # INSECURE: public read access
   enable_versioning = false
 }
 
 
 
 module "database" {
-  source = "registry.terramantle.dev/acme-demo/rds-postgres/aws"
+  source  = "registry.terramantle.dev/acme-demo/rds-postgres/aws"
   version = "1.0.0"
 
   identifier = "platform-db"
-  password = var.db_password
-  vpc_id = module.network.vpc_id
+  password   = var.db_password
+  vpc_id     = module.network.vpc_id
   subnet_ids = module.network.private_subnet_ids
 }
 
