@@ -16,8 +16,6 @@ resource "aws_eks_cluster" "main" {
   tags                      = var.tags
 }
 
-
-
 resource "aws_eks_node_group" "main" {
   for_each = var.node_groups
 

@@ -2,16 +2,27 @@
 #
 # Install once after cloning:
 #   pipx install pre-commit   # or: pip install pre-commit
-#   pre-commit install
+#   pre-commit install        # installs BOTH the pre-commit and commit-msg hooks
+#                             # (see default_install_hook_types below)
 #
 # Thereafter every `git commit` will:
 #   - reformat *.tf            (terraform_fmt)
 #   - regenerate the docs block in each module's README.md from its
 #     variables.tf / outputs.tf  (terraform_docs)
+#   - reject the commit message unless it is a Conventional Commit (commitizen).
+#     The publish pipeline only releases on feat/fix/perf/BREAKING CHANGE; a
+#     bare subject like "patched" yields a SILENT no-release (green CI, no tag).
+#     This hook makes that failure loud and local.
 #
-# The same hooks run in CI on pull requests (see .github/workflows/checks.yml)
-# so a `git commit --no-verify` is still caught. These checks are advisory -
-# they do NOT gate the tag-driven publish pipeline.
+# The fmt/docs hooks also run in CI on pull requests (see
+# .github/workflows/checks.yml) so a `git commit --no-verify` is still caught.
+# NOTE: CI runs only the default (pre-commit) stage, so the commit-msg hook is
+# NOT enforced in CI today - it is local-only. These checks are advisory; they
+# do NOT gate the tag-driven publish pipeline.
+
+# Wire up BOTH the pre-commit stage (fmt/docs) and the commit-msg stage
+# (Conventional Commit validation) from a single `pre-commit install`.
+default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
   - repo: https://github.com/antonbabenko/pre-commit-terraform
@@ -34,3 +45,13 @@ repos:
       - id: end-of-file-fixer
       - id: trailing-whitespace
       - id: check-yaml
+
+  # Reject non-Conventional-Commit messages at commit time. The publish
+  # pipeline only releases on feat/fix/perf/BREAKING CHANGE; a bare subject
+  # like "patched" yields a SILENT no-release (green CI, no tag). This hook
+  # makes that failure loud and local.
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.16.3
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
