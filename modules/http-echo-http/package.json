@@ -1,0 +1,6 @@
+{
+  "name": "http-echo-http",
+  "version": "0.0.0-managed",
+  "private": true,
+  "description": "Version managed by semantic-release; the git tag is the source of truth."
+}
