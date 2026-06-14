@@ -32,8 +32,7 @@ resource "aws_db_instance" "main" {
 
   vpc_security_group_ids = [aws_security_group.rds.id]
   db_subnet_group_name   = aws_db_subnet_group.main.name
-
-  tags = var.tags
+  tags                   = var.tags
 }
 
 resource "aws_security_group" "rds" {

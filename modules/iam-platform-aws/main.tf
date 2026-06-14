@@ -10,10 +10,6 @@ provider "aws" {
   }
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Sub-modules: VPC, S3, RDS, EKS
-# ─────────────────────────────────────────────────────────────────────────────
-
 module "network" {
   source  = "registry.terramantle.dev/acme-demo/vpc/aws"
   version = "1.1.1"
